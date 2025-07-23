@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Malla Curricular Interactiva - Física y Matemáticas</title>
+  <script src="https://unpkg.com/cytoscape@3.24.0/dist/cytoscape.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #1e1e2f;
+      padding: 1rem 2rem;
+      color: white;
+      text-align: center;
+    }
+    .progress-section {
+      display: flex;
+      justify-content: space-around;
+      background-color: #fff;
+      padding: 10px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .progress-bar {
+      height: 20px;
+      background: #0077cc;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+    .bar-container { width: 45%; }
+    .bar-label { margin-bottom: 5px; font-weight: bold; }
+    .bar-wrap {
+      width: 100%;
+      background: #ddd;
+      border-radius: 4px;
+    }
+    #cy { flex-grow: 1; height: 100%; }
+    .controls {
+      background: #fff;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      border-top: 1px solid #ccc;
+    }
+    button {
+      padding: 6px 12px;
+      font-weight: bold;
+      background: #1f77b4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #155b8c; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Malla Curricular Interactiva</h1>
+    <p>Programa de Física y Matemáticas</p>
+  </header>
+  <div class="progress-section">
+    <div class="bar-container">
+      <div class="bar-label">Física: <span id="prog-fisica">0%</span></div>
+      <div class="bar-wrap">
+        <div id="bar-fisica" class="progress-bar" style="background:#1f77b4;"></div>
+      </div>
+    </div>
+    <div class="bar-container">
+      <div class="bar-label">Matemáticas: <span id="prog-mate">0%</span></div>
+      <div class="bar-wrap">
+        <div id="bar-mate" class="progress-bar" style="background:#2ca02c;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="cy"></div>
+  <div class="controls">
+    <button onclick="guardarProgreso()">Guardar</button>
+    <button onclick="exportarProgreso()">Exportar</button>
+    <button onclick="cargarProgreso()">Cargar</button>
+  </div>
+  <script>
+    const materias = [
+      { data: { id: 'FISI-1502', label: 'Intro Física', carrera: 'fisica', semestre: 1 } },
+      { data: { id: 'MATE-1203', label: 'Cálculo Dif.', carrera: 'compartida', semestre: 1 } },
+      { data: { id: 'FISI-1518', label: 'Física 1', carrera: 'compartida', semestre: 2 } },
+      { data: { id: 'FISI-1528', label: 'Física 2', carrera: 'compartida', semestre: 3 } },
+      { data: { id: 'FISI-2540', label: 'Electromag. 1', carrera: 'fisica', semestre: 6 } },
+      { data: { id: 'MATE-1102', label: 'Estructural', carrera: 'matematicas', semestre: 1 } },
+      { data: { id: 'MATE-1105', label: 'Álgebra L. 1', carrera: 'compartida', semestre: 2 } },
+      { data: { id: 'MATE-1107', label: 'Álgebra L. 2', carrera: 'matematicas', semestre: 3 } },
+      { data: { id: 'MATE-2101', label: 'Álgebra Abstr.', carrera: 'matematicas', semestre: 4 } },
+    ];
+
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: materias,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color': ele => {
+              const carrera = ele.data('carrera');
+              if (carrera === 'fisica') return '#1f77b4';
+              if (carrera === 'matematicas') return '#2ca02c';
+              return '#9467bd';
+            },
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'color': '#fff',
+            'text-outline-width': 2,
+            'text-outline-color': '#000',
+            'width': 110,
+            'height': 40,
+            'font-size': 10,
+            'shape': 'roundrectangle'
+          }
+        },
+        {
+          selector: 'node.completed',
+          style: {
+            'background-color': '#333',
+            'text-outline-color': '#333'
+          }
+        }
+      ],
+      layout: { name: 'grid', rows: 4 }
+    });
+
+    cy.on('tap', 'node', evt => {
+      const node = evt.target;
+      node.toggleClass('completed');
+      actualizarProgreso();
+    });
+
+    function actualizarProgreso() {
+      const fis = cy.nodes("[carrera = 'fisica'], [carrera = 'compartida']");
+      const mat = cy.nodes("[carrera = 'matematicas'], [carrera = 'compartida']");
+      const fisCompletadas = fis.filter(n => n.hasClass('completed')).length;
+      const matCompletadas = mat.filter(n => n.hasClass('completed')).length;
+      const fisPct = Math.round(100 * fisCompletadas / fis.length);
+      const matPct = Math.round(100 * matCompletadas / mat.length);
+      document.getElementById('bar-fisica').style.width = fisPct + '%';
+      document.getElementById('bar-mate').style.width = matPct + '%';
+      document.getElementById('prog-fisica').textContent = fisPct + '%';
+      document.getElementById('prog-mate').textContent = matPct + '%';
+    }
+
+    function guardarProgreso() {
+      const progreso = cy.nodes().map(n => ({ id: n.id(), completed: n.hasClass('completed') }));
+      localStorage.setItem('progresoFelipe', JSON.stringify(progreso));
+      alert('Progreso guardado.');
+    }
+
+    function cargarProgreso() {
+      const saved = localStorage.getItem('progresoFelipe');
+      if (!saved) return;
+      const data = JSON.parse(saved);
+      data.forEach(({ id, completed }) => {
+        const node = cy.getElementById(id);
+        node[completed ? 'addClass' : 'removeClass']('completed');
+      });
+      actualizarProgreso();
+    }
+
+    function exportarProgreso() {
+      const progreso = cy.nodes().map(n => ({ id: n.id(), completed: n.hasClass('completed') }));
+      const blob = new Blob([JSON.stringify(progreso, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'progreso_malla_felipe.json';
+      a.click();
+    }
+
+    cargarProgreso();
+    actualizarProgreso();
+  </script>
+</body>
+</html>
